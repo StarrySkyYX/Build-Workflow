@@ -5,7 +5,7 @@ from src.main.model import GreetingResponse, HelloRequest
 
 app = FastAPI()
 
-API_TOKEN = "my_secret_token"
+GITHUB_TOKEN = "ghp_aBcDeFgHiJkLmNoPqRsTuVwXyZ123456"
 
 @app.post("/hello", response_model=GreetingResponse)
 def hello(req: HelloRequest):
