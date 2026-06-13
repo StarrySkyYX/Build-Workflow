@@ -31,3 +31,7 @@ jobs:
       - name: Run pytest
         run: |
           PYTHONPATH=. pytest
+      - name: Build package
+        run: |
+          pip install build
+          python -m build
