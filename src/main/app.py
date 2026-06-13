@@ -5,6 +5,8 @@ from src.main.model import GreetingResponse, HelloRequest
 
 app = FastAPI()
 
+API_TOKEN = "my_secret_token"
+
 @app.post("/hello", response_model=GreetingResponse)
 def hello(req: HelloRequest):
     return GreetingResponse(
