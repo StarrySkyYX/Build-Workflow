@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from datetime import datetime, timezone
 
-from model import GreetingResponse, HelloRequest
+from src.main.model import GreetingResponse, HelloRequest
 
 app = FastAPI()
 
