@@ -53,6 +53,7 @@ jobs:
         env:
           WORKSPACE: https://github.com/${{ github.repository }}/blob/${{ github.sha }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          FAIL_ON_ERROR: true
 
       - name: Upload slscan reports
         if: always()
