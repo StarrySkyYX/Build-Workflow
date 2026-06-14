@@ -112,10 +112,10 @@ jobs:
       - name: Build Docker image
         run: |
           docker build -t myapp:${{ github.sha }} .
-          docker tag myapp:${{ github.sha }} myapp:latest
+          docker tag myapp:${{ github.sha }} myapp:${{ github.sha }}
 
       - name: Save image for next jobs
-        run: docker save myapp:latest -o myapp.tar
+        run: docker save myapp:${{ github.sha }} -o myapp.tar
 
       - name: Upload image artifact
         uses: actions/upload-artifact@v4
@@ -148,7 +148,7 @@ jobs:
       - name: Trivy image scan
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: myapp:latest
+          image-ref: myapp:${{ github.sha }}
           format: sarif
           output: trivy-results.sarif
           severity: CRITICAL,HIGH
@@ -165,7 +165,7 @@ jobs:
             goodwithtech/dockle:v${VERSION} \
             --exit-code 1 \
             --exit-level warn \
-            myapp:latest
+            myapp:${{ github.sha }}
 
       - name: Upload Trivy report
         if: always()
@@ -216,7 +216,7 @@ jobs:
       - name: Load and start app
         run: |
           docker load -i myapp.tar
-          docker run -d -p 8000:8000 --name myapp myapp:latest
+          docker run -d -p 8000:8000 --name myapp myapp:${{ github.sha }}
           # 等待 app 啟動
           sleep 20
           curl -f http://localhost:8000/health || exit 1
