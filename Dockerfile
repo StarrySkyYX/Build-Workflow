@@ -4,8 +4,8 @@ WORKDIR /app
 
 COPY requirements.txt .
 
-RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
-RUN pip install --upgrade pip
+RUN pip install --no-cache-dir --upgrade pip==25.3 && \
+    pip install --no-cache-dir --prefix=/install -r requirements.txt
 
 # Minimal base image：slim 版本，攻擊面最小
 FROM python:3.12-slim-bookworm AS run
