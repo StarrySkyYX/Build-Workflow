@@ -10,7 +10,7 @@ app = FastAPI()
 @app.post("/hello", response_model=GreetingResponse)
 def hello(req: HelloRequest):
     return GreetingResponse(
-        message=f"Hello, {req.name}!",
+        message=f"Hello, ",
         generatedAt=datetime.now(timezone.utc).isoformat()
     )
     
