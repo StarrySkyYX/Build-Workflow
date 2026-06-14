@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from datetime import datetime, timezone
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
@@ -24,6 +24,18 @@ app.add_middleware(
     TrustedHostMiddleware,
     allowed_hosts=["*"]  # production 改成 your domain
 )
+
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    response = await call_next(request)
+    
+    # 針對 API 路由（通常排除靜態網頁或特定的公共檔案）強制不進行快取
+    if request.url.path.startswith("/"): 
+        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate, private"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+        
+    return response
 
 @app.post("/hello", response_model=GreetingResponse)
 def hello(req: HelloRequest):
