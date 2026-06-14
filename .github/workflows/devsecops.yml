@@ -267,7 +267,7 @@ jobs:
       # =========================
       - name: Port-forward service
         run: |
-          kubectl port-forward svc/myapp 8000:8000 &
+          kubectl port-forward svc/myapp 8000:80 &
           sleep 5
           curl -f http://localhost:8000/health
 
