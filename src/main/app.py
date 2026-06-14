@@ -13,3 +13,7 @@ def hello(req: HelloRequest):
         message=f"Hello, {req.name}!",
         generatedAt=datetime.now(timezone.utc).isoformat()
     )
+    
+@app.get("/health")
+def health():
+    return {"status": "ok"}
