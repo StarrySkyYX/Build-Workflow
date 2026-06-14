@@ -229,83 +229,83 @@ jobs:
           name: final-manifest
           path: final-manifest.yaml
 
-dast:
-  name: DAST (OWASP ZAP)
-  runs-on: ubuntu-latest
-  needs: deploy
-  steps:
-    - name: Download image artifact
-      uses: actions/download-artifact@v7
-      with:
-        name: docker-image
+  dast:
+    name: DAST (OWASP ZAP)
+    runs-on: ubuntu-latest
+    needs: deploy
+    steps:
+      - name: Download image artifact
+        uses: actions/download-artifact@v7
+        with:
+          name: docker-image
 
-    - name: Load and start app
-      run: |
-        docker load -i myapp.tar
-        docker network create zapnet
-        docker run -d \
-          --network zapnet \
-          --name myapp \
-          -p 8000:8000 \
-          myapp:${{ github.sha }}
-        sleep 20
-        curl -f http://localhost:8000/health || exit 1
+      - name: Load and start app
+        run: |
+          docker load -i myapp.tar
+          docker network create zapnet
+          docker run -d \
+            --network zapnet \
+            --name myapp \
+            -p 8000:8000 \
+            myapp:${{ github.sha }}
+          sleep 20
+          curl -f http://localhost:8000/health || exit 1
 
-    - name: OWASP ZAP Baseline Scan
-      run: |
-        mkdir -p zap-output
-        chmod 777 zap-output
-        docker run --rm \
-          --network zapnet \
-          -v $(pwd)/zap-output:/zap/wrk/:rw \
-          ghcr.io/zaproxy/zaproxy:stable \
-          zap-baseline.py \
-          -t http://myapp:8000 \
-          -r zap-report.html \
-          -I || true
+      - name: OWASP ZAP Baseline Scan
+        run: |
+          mkdir -p zap-output
+          chmod 777 zap-output
+          docker run --rm \
+            --network zapnet \
+            -v $(pwd)/zap-output:/zap/wrk/:rw \
+            ghcr.io/zaproxy/zaproxy:stable \
+            zap-baseline.py \
+            -t http://myapp:8000 \
+            -r zap-report.html \
+            -I || true
 
-    - name: Upload ZAP report
-      if: always()
-      uses: actions/upload-artifact@v7
-      with:
-        name: zap-report
-        path: zap-output/zap-report.html
+      - name: Upload ZAP report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: zap-report
+          path: zap-output/zap-report.html
 
-    - name: Stop app container
-      if: always()
-      run: |
-        docker stop myapp || true
-        docker network rm zapnet || true
+      - name: Stop app container
+        if: always()
+        run: |
+          docker stop myapp || true
+          docker network rm zapnet || true
 
-e2e:
-  name: E2E tests
-  runs-on: ubuntu-latest
-  needs: deploy
-  steps:
-    - name: Download image artifact
-      uses: actions/download-artifact@v7
-      with:
-        name: docker-image
+  e2e:
+    name: E2E tests
+    runs-on: ubuntu-latest
+    needs: deploy
+    steps:
+      - name: Download image artifact
+        uses: actions/download-artifact@v7
+        with:
+          name: docker-image
 
-    - name: Load and start app
-      run: |
-        docker load -i myapp.tar
-        docker run -d \
-          --name myapp-e2e \
-          -p 8000:8000 \
-          myapp:${{ github.sha }}
-        sleep 20
-        curl -f http://localhost:8000/health || exit 1
+      - name: Load and start app
+        run: |
+          docker load -i myapp.tar
+          docker run -d \
+            --name myapp-e2e \
+            -p 8000:8000 \
+            myapp:${{ github.sha }}
+          sleep 20
+          curl -f http://localhost:8000/health || exit 1
 
-    - name: E2E tests
-      run: |
-        echo "Running E2E tests..."
-        curl -f http://localhost:8000/health
-        curl -f -X POST http://localhost:8000/hello \
-          -H "Content-Type: application/json" \
-          -d '{"name": "World"}'
-        echo "E2E tests passed!"
+      - name: E2E tests
+        run: |
+          echo "Running E2E tests..."
+          curl -f http://localhost:8000/health
+          curl -f -X POST http://localhost:8000/hello \
+            -H "Content-Type: application/json" \
+            -d '{"name": "World"}'
+          echo "E2E tests passed!"
 
-    - name: Stop app container
-      if: always()
-      run: docker stop myapp-e2e || true
+      - name: Stop app container
+        if: always()
+        run: docker stop myapp-e2e || true
