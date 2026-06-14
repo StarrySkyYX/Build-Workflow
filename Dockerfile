@@ -1,4 +1,4 @@
-FROM python:3.12-slim AS build
+FROM python:3.12-slim-bookworm AS build
 
 WORKDIR /app
 
@@ -7,7 +7,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
 
 # Minimal base image：slim 版本，攻擊面最小
-FROM python:3.12-slim AS run
+FROM python:3.12-slim-bookworm AS run
 
 WORKDIR /app
 
@@ -23,7 +23,6 @@ RUN adduser --disabled-password --gecos "" $USER && \
 
 HEALTHCHECK --interval=30s --timeout=10s --retries=2 --start-period=20s \
     CMD python3 -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')" || exit 1
-
 
 USER $USER
 
