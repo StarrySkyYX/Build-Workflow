@@ -153,7 +153,6 @@ jobs:
           output: trivy-results.sarif
           severity: CRITICAL,HIGH
           exit-code: 1
-        continue-on-error: true
 
       - name: Dockle (Image linting)
         run: |
@@ -238,7 +237,6 @@ jobs:
             -t http://localhost:8000 \
             -r zap-report.html \
             -I
-        continue-on-error: true
 
       - name: Upload ZAP report
         if: always()
