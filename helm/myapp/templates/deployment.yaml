@@ -6,6 +6,7 @@ metadata:
     {{- include "myapp.labels" . | nindent 4 }}
 spec:
   replicas: {{ .Values.replicaCount }}
+  automountServiceAccountToken: false
   selector:
     matchLabels:
       app.kubernetes.io/name: {{ include "myapp.name" . }}
@@ -16,18 +17,17 @@ spec:
     spec:
       securityContext:
         runAsNonRoot: true
-        runAsUser: 10001     
-        runAsGroup: 10001    
-        readOnlyRootFilesystem: true
-        capabilities:
-          drop:
-            - ALL           
-        automountServiceAccountToken: false  
-        
+        runAsUser: 10001
+        runAsGroup: 10001
       containers:
         - name: {{ include "myapp.name" . }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
           ports:
             - containerPort: {{ .Values.service.targetPort }}
           livenessProbe:
