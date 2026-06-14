@@ -214,11 +214,11 @@ jobs:
       - name: Load and start app
         run: |
           docker load -i myapp.tar
-          # 建立共用 network
           docker network create zapnet
           docker run -d \
             --network zapnet \
             --name myapp \
+            -p 8000:8000 \
             myapp:${{ github.sha }}
           sleep 20
           curl -f http://localhost:8000/health || exit 1
