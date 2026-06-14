@@ -199,118 +199,118 @@ jobs:
             scan /workspace/rendered-for-kubesec.yaml
 
   deploy:
-  name: Deploy, E2E Tests, DAST
-  runs-on: ubuntu-latest
-  needs: [image-hardening, image-scan, k8s-hardening, helm-lint]
+    name: Deploy, E2E Tests, DAST
+    runs-on: ubuntu-latest
+    needs: [image-hardening, image-scan, k8s-hardening, helm-lint]
 
-  steps:
-    - name: Checkout source
-      uses: actions/checkout@v6
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v6
 
-    # =========================
-    # 1. Load Docker Image
-    # =========================
-    - name: Download image artifact
-      uses: actions/download-artifact@v7
-      with:
-        name: docker-image
+      # =========================
+      # 1. Load Docker Image
+      # =========================
+      - name: Download image artifact
+        uses: actions/download-artifact@v7
+        with:
+          name: docker-image
 
-    - name: Load Docker image
-      run: docker load -i myapp.tar
+      - name: Load Docker image
+        run: docker load -i myapp.tar
 
-    # =========================
-    # 2. Start Kubernetes (kind)
-    # =========================
-    - name: Start kind cluster
-      uses: helm/kind-action@v1
-      with:
-        cluster_name: kind
+      # =========================
+      # 2. Start Kubernetes (kind)
+      # =========================
+      - name: Start kind cluster
+        uses: helm/kind-action@v1
+        with:
+          cluster_name: kind
 
-    - name: Debug cluster
-      run: |
-        kind get clusters
-        kubectl cluster-info
-        kubectl get nodes
+      - name: Debug cluster
+        run: |
+          kind get clusters
+          kubectl cluster-info
+          kubectl get nodes
 
-    - name: Wait for cluster ready
-      run: |
-        kubectl wait --for=condition=Ready nodes --all --timeout=120s
+      - name: Wait for cluster ready
+        run: |
+          kubectl wait --for=condition=Ready nodes --all --timeout=120s
 
-    # =========================
-    # 3. Load image into cluster
-    # =========================
-    - name: Load image into kind
-      run: kind load docker-image myapp:${{ github.sha }} --name kind
+      # =========================
+      # 3. Load image into cluster
+      # =========================
+      - name: Load image into kind
+        run: kind load docker-image myapp:${{ github.sha }} --name kind
 
-    # =========================
-    # 4. Deploy with Helm
-    # =========================
-    - name: Install Helm
-      uses: azure/setup-helm@v4
+      # =========================
+      # 4. Deploy with Helm
+      # =========================
+      - name: Install Helm
+        uses: azure/setup-helm@v4
 
-    - name: Deploy with Helm
-      run: |
-        helm install myapp ./helm/myapp \
-          --set image.tag=${{ github.sha }} \
-          --set image.repository=myapp \
-          --set image.pullPolicy=Never \
-          --wait --timeout 120s
+      - name: Deploy with Helm
+        run: |
+          helm install myapp ./helm/myapp \
+            --set image.tag=${{ github.sha }} \
+            --set image.repository=myapp \
+            --set image.pullPolicy=Never \
+            --wait --timeout 120s
 
-    - name: Verify deployment
-      run: |
-        kubectl get pods
-        kubectl get svc
-        kubectl rollout status deployment/myapp
+      - name: Verify deployment
+        run: |
+          kubectl get pods
+          kubectl get svc
+          kubectl rollout status deployment/myapp
 
-    # =========================
-    # 5. Port-forward (for tests)
-    # =========================
-    - name: Port-forward service
-      run: |
-        kubectl port-forward svc/myapp 8000:8000 &
-        sleep 5
-        curl -f http://localhost:8000/health
+      # =========================
+      # 5. Port-forward (for tests)
+      # =========================
+      - name: Port-forward service
+        run: |
+          kubectl port-forward svc/myapp 8000:8000 &
+          sleep 5
+          curl -f http://localhost:8000/health
 
-    # =========================
-    # 6. E2E Tests
-    # =========================
-    - name: E2E tests
-      run: |
-        curl -f http://localhost:8000/health
+      # =========================
+      # 6. E2E Tests
+      # =========================
+      - name: E2E tests
+        run: |
+          curl -f http://localhost:8000/health
 
-        curl -f -X POST http://localhost:8000/hello \
-          -H "Content-Type: application/json" \
-          -d '{"name": "World"}'
+          curl -f -X POST http://localhost:8000/hello \
+            -H "Content-Type: application/json" \
+            -d '{"name": "World"}'
 
-        echo "E2E tests passed!"
+          echo "E2E tests passed!"
 
-    # =========================
-    # 7. DAST (OWASP ZAP)
-    # =========================
-    - name: Create zap output folder
-      run: mkdir -p zap-output
+      # =========================
+      # 7. DAST (OWASP ZAP)
+      # =========================
+      - name: Create zap output folder
+        run: mkdir -p zap-output
 
-    - name: OWASP ZAP Baseline Scan
-      run: |
-        docker run --rm \
-          -v $(pwd)/zap-output:/zap/wrk/:rw \
-          ghcr.io/zaproxy/zaproxy:stable \
-          zap-baseline.py \
-          -t http://host.docker.internal:8000 \
-          -r zap-report.html \
-          -I || true
+      - name: OWASP ZAP Baseline Scan
+        run: |
+          docker run --rm \
+            -v $(pwd)/zap-output:/zap/wrk/:rw \
+            ghcr.io/zaproxy/zaproxy:stable \
+            zap-baseline.py \
+            -t http://host.docker.internal:8000 \
+            -r zap-report.html \
+            -I || true
 
-    - name: Upload ZAP report
-      if: always()
-      uses: actions/upload-artifact@v7
-      with:
-        name: zap-report
-        path: zap-output/zap-report.html
+      - name: Upload ZAP report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: zap-report
+          path: zap-output/zap-report.html
 
-    # =========================
-    # 8. Cleanup
-    # =========================
-    - name: Stop port-forward
-      if: always()
-      run: |
-        pkill kubectl || true
+      # =========================
+      # 8. Cleanup
+      # =========================
+      - name: Stop port-forward
+        if: always()
+        run: |
+          pkill kubectl || true
