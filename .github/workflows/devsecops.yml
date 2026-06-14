@@ -148,15 +148,6 @@ jobs:
             --exit-level warn \
             myapp:${{ github.sha }}
 
-      - name: Dockle (Image linting)
-        run: |
-          docker run --rm \
-            -v /var/run/docker.sock:/var/run/docker.sock \
-            goodwithtech/dockle:v0.4.15 \
-            --exit-code 1 \
-            --exit-level warn \
-            myapp:${{ github.sha }}
-
   image-scan:
     name: Image Scan (Trivy)
     runs-on: ubuntu-latest
@@ -196,15 +187,24 @@ jobs:
       - name: Checkout source
         uses: actions/checkout@v6
 
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+
+      - name: Render Helm template
+        run: |
+          helm template myapp ./helm/myapp \
+            --set image.tag=${{ github.sha }} \
+            > rendered-for-kubesec.yaml
+
       - name: KubeSec scan
         run: |
           docker run --rm \
-            -v $(pwd)/helm/myapp/templates:/templates \
+            -v $(pwd):/workspace \
             kubesec/kubesec:v2 \
-            scan /templates/deployment.yaml
+            scan /workspace/rendered-for-kubesec.yaml
 
   deploy:
-    name: Deploy to Dev (Helm dry-run)
+    name: Deploy to Dev (Helm + kubectl dry-run)
     runs-on: ubuntu-latest
     needs: [image-hardening, image-scan, k8s-hardening]
     steps:
@@ -214,20 +214,18 @@ jobs:
       - name: Install Helm
         uses: azure/setup-helm@v4
 
-      - name: Helm template dry-run
+      - name: Install kubectl
+        run: |
+          curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+          chmod +x kubectl
+          sudo mv kubectl /usr/local/bin/kubectl
+
+      - name: Helm template + kubectl dry-run
         run: |
           helm template myapp ./helm/myapp \
             --set image.tag=${{ github.sha }} \
-            --debug \
-            > final-manifest.yaml
-          echo "Deploy manifest generated:"
-          cat final-manifest.yaml
+            | kubectl apply --dry-run=client -f -
 
-      - name: Upload final manifest
-        uses: actions/upload-artifact@v7
-        with:
-          name: final-manifest
-          path: final-manifest.yaml
 
   dast:
     name: DAST (OWASP ZAP)
