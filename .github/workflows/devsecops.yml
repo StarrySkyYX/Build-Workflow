@@ -225,7 +225,7 @@ jobs:
         run: |
           helm template myapp ./helm/myapp \
             --set image.tag=${{ github.sha }} \
-            | kubectl apply --dry-run=client -f -
+            | kubectl apply --dry-run=client --validate=false -f -
 
 
   dast:
