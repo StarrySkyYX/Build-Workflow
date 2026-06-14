@@ -5,6 +5,7 @@ WORKDIR /app
 COPY requirements.txt .
 
 RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
+RUN pip install --upgrade pip
 
 # Minimal base image：slim 版本，攻擊面最小
 FROM python:3.12-slim-bookworm AS run
