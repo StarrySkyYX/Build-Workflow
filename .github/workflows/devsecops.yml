@@ -145,24 +145,16 @@ jobs:
           dockerfile: Dockerfile
           failure-threshold: error
 
-      # 第一步：只產報告，不擋（format sarif 不受 severity 控制）
-      - name: Trivy image scan (report)
+      - name: Trivy image scan
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: myapp:${{ github.sha }}
           format: sarif
           output: trivy-results.sarif
-          ignore-unfixed: true
-
-      # 第二步：真正做門檻檢查，用 table 格式才吃 severity
-      - name: Trivy image scan (gate)
-        uses: aquasecurity/trivy-action@master
-        with:
-          image-ref: myapp:${{ github.sha }}
-          format: table
           severity: CRITICAL,HIGH
           ignore-unfixed: true
           exit-code: 1
+          limit-severities-for-sarif: true  
 
       - name: Dockle (Image linting)
         run: |
