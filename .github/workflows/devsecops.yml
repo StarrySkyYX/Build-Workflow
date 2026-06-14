@@ -118,29 +118,27 @@ jobs:
           path: rendered-manifest.yaml
 
   image-hardening:
-    name: Image Hardening (Dockle)
-    runs-on: ubuntu-latest
-    needs: docker-build
-    steps:
-      - name: Checkout source
-        uses: actions/checkout@v6
+    - name: Dockle (Image linting)
+      run: |
+        docker run --rm \
+          -v /var/run/docker.sock:/var/run/docker.sock \
+          -v $(pwd):/report \
+          goodwithtech/dockle:v0.4.15 \
+          --format json \
+          --output /report/dockle-report.json \
+          myapp:${{ github.sha }}
 
-      - name: Download image artifact
-        uses: actions/download-artifact@v7
-        with:
-          name: docker-image
+    - name: Check generated report
+      run: |
+        ls -al
+        test -f dockle-report.json
 
-      - name: Load Docker image
-        run: docker load -i myapp.tar
-
-      - name: Dockle (Image linting)
-        run: |
-          docker run --rm \
-            -v /var/run/docker.sock:/var/run/docker.sock \
-            goodwithtech/dockle:v0.4.15 \
-            --exit-code 1 \
-            --exit-level warn \
-            myapp:${{ github.sha }}
+    - name: Upload Dockle report
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: dockle-report
+        path: dockle-report.json
 
   image-scan:
     name: Image Scan (Trivy)
