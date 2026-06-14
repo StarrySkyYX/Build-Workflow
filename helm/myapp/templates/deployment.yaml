@@ -17,12 +17,14 @@ spec:
       automountServiceAccountToken: false
       securityContext:
         runAsNonRoot: true
-
+        runAsUser: 10001
+        runAsGroup: 10001
       containers:
         - name: {{ include "myapp.name" . }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           securityContext:
+            readOnlyRootFilesystem: true
             capabilities:
               drop:
                 - ALL
