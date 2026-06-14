@@ -14,6 +14,8 @@ WORKDIR /app
 
 COPY --from=build /install /usr/local
 
+RUN pip install --no-cache-dir --upgrade pip==25.3
+
 COPY src/main/ ./src/main/
 
 ARG USER=devops
