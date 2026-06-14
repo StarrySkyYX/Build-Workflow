@@ -217,14 +217,21 @@ jobs:
 
       - name: Start kind cluster
         uses: helm/kind-action@v1
+        with:
+          cluster_name: kind
+
+      - name: Debug cluster
+        run: |
+          kind get clusters
+          kubectl cluster-info
+          kubectl get nodes
         
       - name: Wait for cluster
         run: |
-          kubectl cluster-info
-          kubectl wait --for=condition=Ready nodes --all --timeout=60s
+          kubectl wait --for=condition=Ready nodes --all --timeout=120s
 
       - name: Load image into kind
-        run: kind load docker-image myapp:${{ github.sha }}
+        run: kind load docker-image myapp:${{ github.sha }} --name kind
 
       - name: Install Helm
         uses: azure/setup-helm@v4
