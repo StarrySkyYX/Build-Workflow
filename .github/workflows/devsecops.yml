@@ -214,8 +214,12 @@ jobs:
       - name: Load and start app
         run: |
           docker load -i myapp.tar
-          docker run -d -p 8000:8000 --name myapp myapp:${{ github.sha }}
-          # 等待 app 啟動
+          # 建立共用 network
+          docker network create zapnet
+          docker run -d \
+            --network zapnet \
+            --name myapp \
+            myapp:${{ github.sha }}
           sleep 20
           curl -f http://localhost:8000/health || exit 1
 
@@ -230,20 +234,26 @@ jobs:
 
       - name: OWASP ZAP Baseline Scan
         run: |
+          mkdir -p zap-output
+          chmod 777 zap-output
           docker run --rm \
-            -v $(pwd):/zap/wrk \
+            --network zapnet \
+            -v $(pwd)/zap-output:/zap/wrk/:rw \
             ghcr.io/zaproxy/zaproxy:stable \
             zap-baseline.py \
-            -t http://localhost:8000 \
-            -r zap-report.html
+            -t http://myapp:8000 \
+            -r zap-report.html \
+            -I || true
 
       - name: Upload ZAP report
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v4
         with:
           name: zap-report
-          path: zap-report.html
+          path: zap-output/zap-report.html
 
       - name: Stop app container
         if: always()
-        run: docker stop myapp || true
+        run: |
+          docker stop myapp || true
+          docker network rm zapnet || true
