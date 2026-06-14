@@ -6,7 +6,6 @@ metadata:
     {{- include "myapp.labels" . | nindent 4 }}
 spec:
   replicas: {{ .Values.replicaCount }}
-  automountServiceAccountToken: false
   selector:
     matchLabels:
       app.kubernetes.io/name: {{ include "myapp.name" . }}
@@ -15,6 +14,7 @@ spec:
       labels:
         app.kubernetes.io/name: {{ include "myapp.name" . }}
     spec:
+      automountServiceAccountToken: false
       securityContext:
         runAsNonRoot: true
         runAsUser: 10001
