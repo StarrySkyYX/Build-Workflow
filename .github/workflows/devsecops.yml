@@ -209,7 +209,16 @@ jobs:
           docker run --rm \
             -v $(pwd):/workspace \
             kubesec/kubesec:v2 \
-            scan /workspace/rendered-for-kubesec.yaml
+            scan /workspace/rendered-for-kubesec.yaml \
+            > kubesec-report.json
+          cat kubesec-report.json
+
+      - name: Upload KubeSec report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: kubesec-report
+          path: kubesec-report.json
 
   deploy:
     name: Deploy, E2E Tests, DAST
