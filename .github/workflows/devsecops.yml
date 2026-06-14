@@ -73,10 +73,32 @@ jobs:
           name: slscan-reports
           path: reports
 
+  docker-build:
+    name: Package (Docker Build)
+    runs-on: ubuntu-latest
+    needs: slscan
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v6
+
+      - name: Build Docker image
+        run: |
+          docker build -t myapp:${{ github.sha }} .
+          docker tag myapp:${{ github.sha }} myapp:${{ github.sha }}
+
+      - name: Save image for next jobs
+        run: docker save myapp:${{ github.sha }} -o myapp.tar
+
+      - name: Upload image artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: docker-image
+          path: myapp.tar
+
   helm-lint:
     name: Helm Lint & Validate
     runs-on: ubuntu-latest
-    needs: slscan
+    needs: docker-build
     steps:
       - name: Checkout source
         uses: actions/checkout@v6
@@ -100,28 +122,6 @@ jobs:
         with:
           name: helm-manifest
           path: rendered-manifest.yaml
-
-  docker-build:
-    name: Package (Docker Build)
-    runs-on: ubuntu-latest
-    needs: helm-lint
-    steps:
-      - name: Checkout source
-        uses: actions/checkout@v6
-
-      - name: Build Docker image
-        run: |
-          docker build -t myapp:${{ github.sha }} .
-          docker tag myapp:${{ github.sha }} myapp:${{ github.sha }}
-
-      - name: Save image for next jobs
-        run: docker save myapp:${{ github.sha }} -o myapp.tar
-
-      - name: Upload image artifact
-        uses: actions/upload-artifact@v7
-        with:
-          name: docker-image
-          path: myapp.tar
 
   image-hardening:
     name: Image Hardening (Dockle)
@@ -194,6 +194,7 @@ jobs:
         run: |
           helm template myapp ./helm/myapp \
             --set image.tag=${{ github.sha }} \
+            -s templates/deployment.yaml \
             > rendered-for-kubesec.yaml
 
       - name: KubeSec scan
