@@ -68,7 +68,7 @@ jobs:
 
       - name: Upload slscan reports
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: slscan-reports
           path: reports
@@ -96,7 +96,7 @@ jobs:
           cat rendered-manifest.yaml
 
       - name: Upload rendered manifest
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: helm-manifest
           path: rendered-manifest.yaml
@@ -118,7 +118,7 @@ jobs:
         run: docker save myapp:${{ github.sha }} -o myapp.tar
 
       - name: Upload image artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: docker-image
           path: myapp.tar
@@ -169,7 +169,7 @@ jobs:
 
       - name: Upload Trivy report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: trivy-report
           path: trivy-results.sarif
@@ -195,7 +195,7 @@ jobs:
           cat final-manifest.yaml
 
       - name: Upload final manifest
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: final-manifest
           path: final-manifest.yaml
@@ -241,7 +241,7 @@ jobs:
 
       - name: Upload ZAP report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: zap-report
           path: zap-report.html
