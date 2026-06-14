@@ -1,0 +1,26 @@
+replicaCount: 1
+
+image:
+  repository: myapp
+  tag: latest
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 8000
+
+healthcheck:
+  path: /health
+  initialDelaySeconds: 20
+  periodSeconds: 30
+  timeoutSeconds: 10
+  failureThreshold: 2
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 256Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi

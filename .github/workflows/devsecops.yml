@@ -72,3 +72,181 @@ jobs:
         with:
           name: slscan-reports
           path: reports
+
+  helm-lint:
+    name: Helm Lint & Validate
+    runs-on: ubuntu-latest
+    needs: slscan
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v6
+
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+
+      - name: Helm lint
+        run: helm lint ./helm/myapp
+
+      - name: Helm template validate
+        run: |
+          helm template myapp ./helm/myapp \
+            --set image.tag=${{ github.sha }} \
+            > rendered-manifest.yaml
+          echo "Rendered manifest:"
+          cat rendered-manifest.yaml
+
+      - name: Upload rendered manifest
+        uses: actions/upload-artifact@v4
+        with:
+          name: helm-manifest
+          path: rendered-manifest.yaml
+
+  docker-build:
+    name: Package (Docker Build)
+    runs-on: ubuntu-latest
+    needs: helm-lint
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v6
+
+      - name: Build Docker image
+        run: |
+          docker build -t myapp:${{ github.sha }} .
+          docker tag myapp:${{ github.sha }} myapp:latest
+
+      - name: Save image for next jobs
+        run: docker save myapp:latest -o myapp.tar
+
+      - name: Upload image artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-image
+          path: myapp.tar
+
+  image-analysis:
+    name: Image Analysis (Trivy + Dockle + Hadolint)
+    runs-on: ubuntu-latest
+    needs: docker-build
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v6
+
+      - name: Download image artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: docker-image
+
+      - name: Load Docker image
+        run: docker load -i myapp.tar
+
+      - name: Hadolint (Dockerfile lint)
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: Dockerfile
+          failure-threshold: error
+
+      - name: Trivy image scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: myapp:latest
+          format: sarif
+          output: trivy-results.sarif
+          severity: CRITICAL,HIGH
+          exit-code: 1
+        continue-on-error: true
+
+      - name: Dockle (Image linting)
+        run: |
+          VERSION=$(curl --silent \
+            "https://api.github.com/repos/goodwithtech/dockle/releases/latest" \
+            | grep '"tag_name":' | sed -E 's/.*"v([^"]+)".*/\1/')
+          docker run --rm \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            goodwithtech/dockle:v${VERSION} \
+            --exit-code 1 \
+            --exit-level warn \
+            myapp:latest
+
+      - name: Upload Trivy report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-report
+          path: trivy-results.sarif
+
+  deploy:
+    name: Deploy to Dev (Helm dry-run)
+    runs-on: ubuntu-latest
+    needs: image-analysis
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v6
+
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+
+      - name: Helm template dry-run
+        run: |
+          helm template myapp ./helm/myapp \
+            --set image.tag=${{ github.sha }} \
+            --debug \
+            > final-manifest.yaml
+          echo "Deploy manifest generated:"
+          cat final-manifest.yaml
+
+      - name: Upload final manifest
+        uses: actions/upload-artifact@v4
+        with:
+          name: final-manifest
+          path: final-manifest.yaml
+
+  dast:
+    name: Dynamic Analysis (OWASP ZAP)
+    runs-on: ubuntu-latest
+    needs: deploy
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v6
+
+      - name: Download image artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: docker-image
+
+      - name: Load and start app
+        run: |
+          docker load -i myapp.tar
+          docker run -d -p 8000:8000 --name myapp myapp:latest
+          # 等待 app 啟動
+          sleep 20
+          curl -f http://localhost:8000/health || exit 1
+
+      - name: E2E tests
+        run: |
+          echo "Running E2E tests..."
+          curl -f http://localhost:8000/health
+          curl -f -X POST http://localhost:8000/hello \
+            -H "Content-Type: application/json" \
+            -d '{"name": "World"}'
+          echo "E2E tests passed!"
+
+      - name: OWASP ZAP Baseline Scan
+        run: |
+          docker run --network host \
+            ghcr.io/zaproxy/zaproxy:stable \
+            zap-baseline.py \
+            -t http://localhost:8000 \
+            -r zap-report.html \
+            -I
+        continue-on-error: true
+
+      - name: Upload ZAP report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: zap-report
+          path: zap-report.html
+
+      - name: Stop app container
+        if: always()
+        run: docker stop myapp || true
